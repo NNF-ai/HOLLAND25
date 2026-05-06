@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>홀랜드 직업흥미 검사 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;700&display=swap');
+        body { font-family: 'Pretendard', sans-serif; -webkit-tap-highlight-color: transparent; word-break: keep-all; }
+        .choice-btn:active { transform: scale(0.98); }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+    <div id="app" class="max-w-md mx-auto min-h-screen bg-white shadow-lg flex flex-col">
+        <header class="p-4 border-b text-center bg-white sticky top-0 z-10">
+            <h1 class="text-lg font-bold text-blue-600">Holland 직업흥미 검사 (24문항)</h1>
+            <div id="progress-bar-container" class="w-full bg-gray-200 h-1.5 mt-3 rounded-full overflow-hidden">
+                <div id="progress-bar" class="bg-blue-500 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+        </header>
+
+        <!-- 질문 섹션 -->
+        <main id="quiz-container" class="flex-1 p-6 flex flex-col">
+            <div id="progress-text" class="text-sm text-gray-400 mb-2 font-medium">질문 1 / 24</div>
+            <h2 id="question-text" class="text-xl font-semibold mb-10 leading-snug min-h-[4rem]">기계나 도구를 조립하거나 고치는 일이 즐겁다.</h2>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="handleAnswer(9)" class="choice-btn w-full p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-blue-800 font-bold transition text-left flex justify-between items-center">
+                    <span>매우 그렇다</span><span class="text-blue-400 text-sm">9점</span>
+                </button>
+                <button onclick="handleAnswer(7)" class="choice-btn w-full p-4 bg-blue-50/50 hover:bg-blue-100 border border-blue-100 rounded-xl text-blue-700 font-medium transition text-left flex justify-between items-center">
+                    <span>그렇다</span><span class="text-blue-300 text-sm">7점</span>
+                </button>
+                <button onclick="handleAnswer(5)" class="choice-btn w-full p-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-gray-700 font-medium transition text-left flex justify-between items-center">
+                    <span>보통이다</span><span class="text-gray-400 text-sm">5점</span>
+                </button>
+                <button onclick="handleAnswer(3)" class="choice-btn w-full p-4 bg-red-50/50 hover:bg-red-100 border border-red-100 rounded-xl text-red-700 font-medium transition text-left flex justify-between items-center">
+                    <span>아니다</span><span class="text-red-300 text-sm">3점</span>
+                </button>
+                <button onclick="handleAnswer(1)" class="choice-btn w-full p-4 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl text-red-800 font-bold transition text-left flex justify-between items-center">
+                    <span>전혀 아니다</span><span class="text-red-400 text-sm">1점</span>
+                </button>
+            </div>
+        </main>
+
+        <!-- 결과 섹션 -->
+        <main id="result-container" class="hidden flex-1 p-6 overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 text-center">검사 결과 분석</h2>
+            <canvas id="radarChart" class="mb-8"></canvas>
+            
+            <div id="analysis-box" class="bg-blue-50 p-5 rounded-2xl mb-4 border border-blue-100">
+                <h3 class="font-bold text-blue-800 mb-2">🧐 심층 해석</h3>
+                <p id="interpretation-text" class="text-sm leading-relaxed text-gray-700"></p>
+            </div>
+
+            <div id="job-box" class="bg-green-50 p-5 rounded-2xl mb-6 border-l-4 border-green-500">
+                <h3 class="font-bold text-green-800 mb-2">🛠 추천 직무 및 NCS</h3>
+                <p id="job-text" class="text-sm leading-relaxed text-gray-700 whitespace-pre-line"></p>
+            </div>
+
+            <button onclick="location.reload()" class="w-full p-4 bg-gray-900 text-white rounded-xl font-bold mb-8 shadow-lg">테스트 다시하기</button>
+        </main>
+    </div>
+
+    <script>
+        const questions = [
+            // R: 실재형 (4)
+            { text: "기계 부품이나 전기 장치를 조립하는 것을 즐긴다.", type: "R" },
+            { text: "밖에서 몸을 움직이며 도구를 사용하는 일이 체질에 맞다.", type: "R" },
+            { text: "설계도를 보고 물건을 실제로 만들어내는 것이 쉽다.", type: "R" },
+            { text: "운동 기구나 복잡한 장비의 작동 원리를 파악하는 게 좋다.", type: "R" },
+            // I: 탐구형 (4)
+            { text: "수학적 문제나 복잡한 공식을 푸는 데 흥미가 있다.", type: "I" },
+            { text: "과학 잡지를 읽거나 새로운 기술 트렌드를 분석하는 걸 좋아한다.", type: "I" },
+            { text: "현상의 원인을 밝히기 위해 실험하고 관찰하는 것이 즐겁다.", type: "I" },
+            { text: "추상적인 아이디어를 논리적으로 분석하는 일을 잘한다.", type: "I" },
+            // A: 예술형 (4)
+            { text: "나만의 독창적인 방식으로 무언가를 표현하는 것을 좋아한다.", type: "A" },
+            { text: "음악, 미술, 연주 등 예술적 활동에 깊이 몰입하곤 한다.", type: "A" },
+            { text: "정해진 규칙보다는 자유롭고 변화가 많은 환경이 좋다.", type: "A" },
+            { text: "상상력이 풍부하다는 말을 자주 듣는다.", type: "A" },
+            // S: 사회형 (4)
+            { text: "남을 가르치거나 지식을 나누는 일에서 보람을 느낀다.", type: "S" },
+            { text: "고민이 있는 친구의 이야기를 들어주고 조언해주는 게 편하다.", type: "S" },
+            { text: "팀 프로젝트에서 사람들의 의견을 조율하는 역할을 즐긴다.", type: "S" },
+            { text: "사회적으로 소외된 사람들을 돕는 봉사활동에 관심이 많다.", type: "S" },
+            // E: 진취형 (4)
+            { text: "사람들 앞에서 발표하거나 설득하는 일에 자신이 있다.", type: "E" },
+            { text: "목표를 세우고 팀원들을 이끌어 성과를 내는 것을 좋아한다.", type: "E" },
+            { text: "비즈니스 기회를 포착하거나 직접 사업을 구상하는 데 관심이 있다.", type: "E" },
+            { text: "어려운 협상 상황에서도 주도권을 잡는 편이다.", type: "E" },
+            // C: 관습형 (4)
+            { text: "숫자나 데이터를 정확하게 기록하고 관리하는 일이 적성에 맞다.", type: "C" },
+            { text: "정해진 절차와 매뉴얼에 따라 일하는 것이 효율적이라 생각한다.", type: "C" },
+            { text: "문서 서식이나 파일 정리를 깔끔하게 하는 것을 잘한다.", type: "C" },
+            { text: "꼼꼼한 검토가 필요한 예산 결산이나 행정 업무가 즐겁다.", type: "C" }
+        ];
+
+        const jobDatabase = {
+            "RI": { jobs: "항공기 정비사, 시스템 제어 설계사", ncs: "기계정비(15.01), 전기설비(14.02)" },
+            "RC": { jobs: "중장비 운전원, 품질관리 검사원", ncs: "건설기계운전(14.03), 품질관리(02.05)" },
+            "IR": { jobs: "데이터 과학자, 로봇 공학자", ncs: "정보기술전략(12.01), 에너지자원(20.03)" },
+            "IA": { jobs: "웹 디자인 기획자, 인류학 연구원", ncs: "IT전략기획(12.01), 디자인(08.02)" },
+            "AS": { jobs: "음악/미술 치료사, 연극 놀이 강사", ncs: "사회복지(07.01), 상담(07.02)" },
+            "AE": { jobs: "광고 디렉터, 패션 MD", ncs: "광고마케팅(02.04), 디자인(08.02)" },
+            "SA": { jobs: "상담 심리사, 특수 교사", ncs: "상담(07.02), 교육(04.01)" },
+            "SE": { jobs: "인사 전문가, 직업상담사, 서비스 매니저", ncs: "인사조직(02.02), 영업판매(03.01)" },
+            "ES": { jobs: "영업 관리자, 사회적 기업가", ncs: "영업판매(03.01), 경영기획(02.01)" },
+            "EC": { jobs: "경영 분석가, 공인중개사, 물류 관리자", ncs: "경영기획(02.01), 유통물류(02.04)" },
+            "CE": { jobs: "회계사, 세무사, 일반 행정원", ncs: "재무회계(02.03), 총무행정(02.06)" },
+            "CI": { jobs: "정보 보안 전문가, 데이터 분석가", ncs: "정보보안(12.01), 빅데이터분석(12.03)" }
+        };
+
+        let currentStep = 0;
+        let scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+
+        function handleAnswer(points) {
+            const type = questions[currentStep].type;
+            scores[type] += points;
+            currentStep++;
+
+            const progressPercent = (currentStep / questions.length) * 100;
+            document.getElementById('progress-bar').style.width = `${progressPercent}%`;
+
+            if (currentStep < questions.length) {
+                updateQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function updateQuestion() {
+            document.getElementById('progress-text').innerText = `질문 ${currentStep + 1} / ${questions.length}`;
+            document.getElementById('question-text').innerText = questions[currentStep].text;
+        }
+
+        function showResult() {
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('result-container').classList.remove('hidden');
+            window.scrollTo(0,0);
+
+            const sorted = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+            const top1 = sorted[0];
+            const top2 = sorted[1];
+            
+            const maxVal = Math.max(...Object.values(scores));
+            const minVal = Math.min(...Object.values(scores));
+            const diff = maxVal - minVal;
+
+            let diffText = diff > 15 ? "특정 분야에 대한 흥미가 매우 뚜렷합니다." : "여러 분야에 고루 관심이 있는 다재다능한 유형입니다.";
+            document.getElementById('interpretation-text').innerText = `당신은 ${top1}형과 ${top2}형의 특성이 가장 강하게 나타납니다. ${diffText}`;
+
+            const matching = jobDatabase[top1 + top2] || jobDatabase[top2 + top1] || { jobs: "복합적인 직무 수행 가능", ncs: "범용 사무 및 경영 관리" };
+            document.getElementById('job-text').innerText = `추천 직업: ${matching.jobs}\n\nNCS 직무: ${matching.ncs}`;
+
+            renderChart();
+        }
+
+        function renderChart() {
+            const ctx = document.getElementById('radarChart');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['R(실재)', 'I(탐구)', 'A(예술)', 'S(사회)', 'E(진취)', 'C(관습)'],
+                    datasets: [{
+                        label: '나의 흥미 지수',
+                        data: [scores.R, scores.I, scores.A, scores.S, scores.E, scores.C],
+                        fill: true,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        pointBackgroundColor: 'rgb(59, 130, 246)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgb(59, 130, 246)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 36, // 유형당 4문항 x 9점 = 36점 만점
+                            ticks: { display: false }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
